@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Abra o ZIP de resultado de uma execução e explore seus arquivos JSON no navegador.">
+  <title>Leitor de resultados · JSON</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./protocol.css">
+  <script defer src="./vendor/fflate.js"></script>
+  <script defer src="./reader.js"></script>
+  <script defer src="./download.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon" aria-hidden="true">{ }</span><div>Leitor de resultados<small>ARQUIVOS DE EXECUÇÃO · BETHA</small></div></div>
+    <span class="local-badge"><span aria-hidden="true">●</span> Leitura local</span>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">DO ARQUIVO AO CONTEÚDO</p>
+      <h1>Explore seu resultado.</h1>
+      <p>Informe o protocolo da execução ou abra o ZIP para consultar os dados do JSON.</p>
+    </section>
+    <section class="protocol-section" aria-label="Abrir resultado pelo protocolo">
+      <form id="protocol-form" novalidate>
+        <label for="protocol">Protocolo da execução</label>
+        <div class="protocol-controls">
+          <input id="protocol" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false" aria-describedby="protocol-help">
+          <button id="load-protocol" class="primary" type="submit">Abrir resultado</button>
+        </div>
+      </form>
+      <p id="protocol-help">O resultado precisa estar disponível na Betha e acessível pela sua conta.</p>
+      <div id="protocol-links" hidden>
+        <label for="share-url">Link para este protocolo</label>
+        <div class="share-controls"><input id="share-url" type="text" readonly><button id="copy-link" class="secondary" type="button">Copiar link</button></div>
+        <a id="direct-download" hidden target="_blank" rel="noopener noreferrer">Abrir download direto na Betha ↗</a>
+        <p>Se a leitura automática não funcionar, baixe pelo link acima e selecione o ZIP abaixo.</p>
+      </div>
+    </section>
+    <section id="dropzone" class="dropzone" aria-label="Abrir arquivo ZIP">
+      <div class="upload-symbol" aria-hidden="true">↑</div>
+      <div class="drop-copy"><h2>Arraste seu ZIP para cá</h2><p>Ou escolha um arquivo no computador. Até 25 MB.</p></div>
+      <button id="open" class="primary" type="button">Selecionar ZIP <span aria-hidden="true">↗</span></button>
+      <input id="file" type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden>
+    </section>
+    <div class="under-upload"><span>Os arquivos são processados somente neste navegador.</span><a href="./exemplos/resultado-exemplo.zip" download>Baixar ZIP de exemplo ↓</a></div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <section id="empty" class="empty-state">
+      <div class="empty-icon" aria-hidden="true">{ … }</div>
+      <h2>Seus dados aparecem aqui</h2>
+      <p>Abra um ZIP para explorar campos, listas e valores.<br>Não é necessário extrair o arquivo antes.</p>
+      <div class="steps"><span><b>01</b> Abra o ZIP</span><span><b>02</b> Escolha o JSON</span><span><b>03</b> Explore os dados</span></div>
+    </section>
+    <section id="workspace" class="workspace" hidden aria-label="Visualizador JSON">
+      <aside class="sidebar">
+        <div class="sidebar-heading"><h2>Arquivos JSON</h2><span id="file-count" class="count"></span></div>
+        <p id="archive-name" class="archive-name"></p>
+        <nav id="files" aria-label="Arquivos encontrados no ZIP"></nav>
+        <button id="clear" class="clear-button" type="button">Fechar arquivo</button>
+      </aside>
+      <div class="document">
+        <header class="document-heading"><div><h2 id="document-name"></h2><p id="document-meta"></p></div><span id="valid-badge" class="valid-badge">JSON válido</span></header>
+        <div class="toolbar">
+          <div class="view-switch" role="group" aria-label="Modo de visualização"><button id="tree-view" type="button" aria-pressed="true">Árvore</button><button id="raw-view" type="button" aria-pressed="false">JSON formatado</button></div>
+          <label class="search-label"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Buscar campo ou valor…" aria-label="Buscar campo ou valor"></label>
+        </div>
+        <div id="content" class="content" tabindex="0" aria-label="Conteúdo do JSON"></div>
+        <footer class="document-footer"><span id="view-hint">Clique nas setas para explorar os campos.</span><span>Somente leitura</span></footer>
+      </div>
+    </section>
+    <footer class="page-footer"><span>Leitor de resultados <span aria-hidden="true">/</span> JSON</span><span>Visualização no navegador. Sem upload de arquivos.</span></footer>
+  </main>
+  <noscript>Ative o JavaScript do navegador para abrir e visualizar os arquivos ZIP.</noscript>
+</body>
+</html>
