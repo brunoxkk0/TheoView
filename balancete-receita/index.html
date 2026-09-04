@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Comparativo Interanual - Balancete da Receita</title>
+  <style>
+    /* VARIABLES & THEME */
+    :root {
+      --bg-paper: #f7f5f0;
+      --bg-card: #ffffff;
+      --border-line: #e2ddd3;
+      --text-main: #2b2927;
+      --text-muted: #6e6a64;
+      
+      --green-primary: #1b4332;
+      --green-secondary: #2d6a4f;
+      --green-light: #e8f5e9;
+      --green-text: #2e7d32;
+      
+      --gold-accent: #d4af37;
+      --gold-light: #fef9e7;
+
+      --terracotta-primary: #b04a2e;
+      --terracotta-secondary: #d97757;
+      --terracotta-light: #fdf2ef;
+
+      --font-serif: "Georgia", "Palatino", serif;
+      --font-mono: "JetBrains Mono", "Courier New", monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-paper);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      padding: 24px;
+      background-image: linear-gradient(var(--border-line) 1px, transparent 1px);
+      background-size: 100% 32px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* HEADER & HERO */
+    .hero {
+      background-color: var(--green-primary);
+      color: #ffffff;
+      padding: 32px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      border-bottom: 4px solid var(--gold-accent);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .hero h1 {
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: normal;
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      color: #d1e7dd;
+      font-size: 0.95rem;
+    }
+
+    /* PROTOCOL STATUS */
+    .protocol-section {
+      margin-bottom: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-line);
+      border-left: 4px solid var(--gold-accent);
+      border-radius: 8px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .protocol-spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid var(--border-line);
+      border-top-color: var(--green-secondary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex: 0 0 auto;
+    }
+
+    .protocol-section.loaded { border-left-color: var(--green-secondary); }
+    .protocol-section.error { border-left-color: var(--terracotta-primary); }
+    .protocol-section.loaded .protocol-spinner,
+    .protocol-section.error .protocol-spinner { animation: none; border: 0; }
+    .protocol-section.loaded .protocol-spinner::after { content: "✓"; color: var(--green-secondary); font-weight: bold; }
+    .protocol-section.error .protocol-spinner::after { content: "!"; color: var(--terracotta-primary); font-weight: bold; }
+    .protocol-copy { min-width: 0; }
+    .protocol-copy strong { display: block; color: var(--green-primary); }
+    .protocol-copy span { color: var(--text-muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+    .protocol-section.error .protocol-copy strong { color: var(--terracotta-primary); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    body.loading .kpi-grid,
+    body.loading .tabs-header,
+    body.loading #tab-contents,
+    body.load-error .kpi-grid,
+    body.load-error .tabs-header,
+    body.load-error #tab-contents { display: none; }
+
+    /* KPI CARDS */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-line);
+      border-radius: 6px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi-card .label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .kpi-card .value {
+      font-family: var(--font-mono);
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: var(--green-primary);
+    }
+
+    .kpi-card .subtext {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .month-select {
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border: 1px solid var(--border-line);
+      border-radius: 4px;
+      background-color: var(--bg-paper);
+      color: var(--text-main);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .month-select:hover {
+      border-color: var(--green-secondary);
+    }
+
+    /* TABS */
+    .tabs-header {
+      display: flex;
+      gap: 4px;
+      border-bottom: 2px solid var(--border-line);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: var(--green-primary);
+    }
+
+    .tab-btn.active::after {
+      content: "";
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background-color: var(--gold-accent);
+    }
+
+    /* TAB VARIANT FOR RESOURCE MASK */
+    .tab-btn.resource-tab.active {
+      color: var(--terracotta-primary);
+    }
+
+    .tab-btn.resource-tab.active::after {
+      background-color: var(--terracotta-primary);
+    }
+
+    .tab-btn .badge-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--terracotta-secondary);
+      margin-right: 6px;
+    }
+
+    /* MAIN CONTENT AREA */
+    .tab-content {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border-line);
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .legend-box {
+      background-color: var(--terracotta-light);
+      border-left: 4px solid var(--terracotta-primary);
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      color: var(--terracotta-primary);
+    }
+
+    /* CONTROLS */
+    .controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 16px;
+    }
+
+    .search-input {
+      padding: 8px 14px;
+      border: 1px solid var(--border-line);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      width: 320px;
+      font-family: var(--font-sans);
+    }
+
+    /* TOP RANKING BARS */
+    .ranking-section {
+      margin-bottom: 32px;
+    }
+
+    .ranking-title {
+      font-family: var(--font-serif);
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+    }
+
+    .bar-label {
+      width: 250px;
+      padding-right: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 18px;
+      background: var(--bg-paper);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background-color: var(--green-secondary);
+      transition: width 0.3s ease;
+    }
+
+    .resource-theme .bar-fill {
+      background-color: var(--terracotta-secondary);
+    }
+
+    .bar-val {
+      width: 140px;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding-left: 12px;
+    }
+
+    /* DATA TABLES */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-line);
+    }
+
+    th {
+      background-color: var(--bg-paper);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease;
+    }
+
+    th:hover {
+      background-color: #ede9e0;
+      color: var(--text-main);
+    }
+
+    th .sort-icon {
+      font-size: 0.75rem;
+      margin-left: 4px;
+      opacity: 0.5;
+    }
+
+    th.sorted .sort-icon {
+      opacity: 1;
+      color: var(--green-primary);
+    }
+
+    .resource-theme th.sorted .sort-icon {
+      color: var(--terracotta-primary);
+    }
+
+    .num-col {
+      font-family: var(--font-mono);
+      text-align: right;
+    }
+
+    .neg-value {
+      color: var(--terracotta-primary);
+    }
+
+    .pos-value {
+      color: var(--green-text);
+    }
+
+    .text-clamp {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      max-width: 300px;
+    }
+
+    /* EXPANDABLE ROW & MONTHLY CARDS */
+    tr.main-row {
+      cursor: pointer;
+    }
+
+    tr.main-row:hover {
+      background-color: rgba(0,0,0,0.02);
+    }
+
+    .details-row {
+      display: none;
+      background-color: var(--bg-paper);
+    }
+
+    .details-row.active {
+      display: table-row;
+    }
+
+    .details-container {
+      padding: 20px;
+    }
+
+    .details-header {
+      margin-bottom: 16px;
+    }
+
+    .details-title {
+      font-size: 1rem;
+      font-weight: bold;
+      color: var(--text-main);
+    }
+
+    .details-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .cards-month-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .month-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-line);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    .month-card .m-title {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .month-card .m-line {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      margin-bottom: 2px;
+      color: var(--text-main);
+    }
+
+    .month-card .m-line span.yr {
+      font-weight: bold;
+      margin-right: 6px;
+    }
+
+    .month-card .m-var {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-top: 4px;
+      margin-bottom: 8px;
+    }
+
+    .month-card .m-bars-wrapper {
+      display: flex;
+      gap: 4px;
+      align-items: flex-end;
+      height: 36px;
+      background: var(--bg-paper);
+      padding: 4px 8px 0 8px;
+      border-radius: 4px;
+    }
+
+    .month-card .m-bar-inner {
+      flex: 1;
+      border-radius: 2px 2px 0 0;
+      transition: height 0.3s ease;
+    }
+
+    .month-card .m-bar-inner.prev { background-color: #a0aec0; }
+    .month-card .m-bar-inner.curr { background-color: var(--green-primary); }
+
+    .resource-theme .month-card .m-bar-inner.curr {
+      background-color: var(--terracotta-primary);
+    }
+  </style>
+</head>
+<body class="loading">
+
+<div class="container">
+  
+  <!-- HERO HEADER -->
+  <header class="hero">
+    <h1>Dashboard Comparativo de Balancete da Receita</h1>
+    <p>Comparativo mensal e anual entre exercícios financeiros — dados carregados pelo protocolo da execução.</p>
+  </header>
+
+  <!-- PROTOCOL LOAD STATUS -->
+  <section class="protocol-section" id="protocol-status" role="status" aria-live="polite">
+    <div class="protocol-spinner" aria-hidden="true"></div>
+    <div class="protocol-copy">
+      <strong id="protocol-title">Carregando dados da execução…</strong>
+      <span id="protocol-detail">Validando o protocolo informado na URL.</span>
+    </div>
+  </section>
+
+  <!-- KPI SUMMARY CARDS -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="label"><span>Exercício Atual (<span id="kpi-year-curr">---</span>)</span></div>
+      <div class="value" id="kpi-total-curr">R$ 0,00</div>
+      <div class="subtext">Acumulado Anual</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label"><span>Exercício Anterior (<span id="kpi-year-prev">---</span>)</span></div>
+      <div class="value" style="color: var(--text-muted)" id="kpi-total-prev">R$ 0,00</div>
+      <div class="subtext">Acumulado Anual</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label"><span>Variação Anual</span></div>
+      <div class="value" id="kpi-var-year">0,00%</div>
+      <div class="subtext" id="kpi-var-abs">R$ 0,00</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">
+        <span>Mês de Referência:</span>
+        <select id="select-kpi-month" class="month-select" onchange="updateSelectedMonth(this.value)">
+          <!-- Dynamic month options -->
+        </select>
+      </div>
+      <div class="value" id="kpi-month-curr">R$ 0,00</div>
+      <div class="subtext">vs. Mesma época ano anterior: <span id="kpi-month-prev">R$ 0,00</span></div>
+    </div>
+  </section>
+
+  <!-- TABS HEADER -->
+  <nav class="tabs-header">
+    <button class="tab-btn active" onclick="switchTab('rec')">Por Receita e Descrição</button>
+    <button class="tab-btn" onclick="switchTab('rec-full')">Por Recurso</button>
+    <button class="tab-btn resource-tab" onclick="switchTab('origem')"><span class="badge-dot"></span>Origem do Recurso</button>
+    <button class="tab-btn resource-tab" onclick="switchTab('aplicacao')"><span class="badge-dot"></span>Aplicação Fonte</button>
+    <button class="tab-btn resource-tab" onclick="switchTab('desdobra')"><span class="badge-dot"></span>Desdobramento Fonte</button>
+    <button class="tab-btn resource-tab" onclick="switchTab('detalha')"><span class="badge-dot"></span>Detalhamento Fonte</button>
+  </nav>
+
+  <!-- TAB CONTENTS CONTAINER -->
+  <main id="tab-contents">
+    <!-- Dynamic Tabs will render here via JS -->
+  </main>
+
+</div>
+
+<script>
+  // GLOSSARIES FOR RESOURCE MASK DECODING
+  const MAP_ORIGEM = {
+    '01': 'Recursos Ordinários / Livres', '02': 'Transferências do FUNDEB',
+    '03': 'Transferências Voluntárias', '04': 'Alienação de Bens',
+    '05': 'Operações de Crédito', '06': 'Contratos de Rateio de Consórcios Públicos',
+    '08': 'Regime Próprio de Previdência', '09': 'Transferências de Programas',
+    '10': 'Antecipação da Receita Orçamentária – ARO',
+    '11': 'Programas/Transferências Voluntárias Anteriores a 2013 Reclassificados',
+    '12': 'Emendas Parlamentares', '13': 'Apoio Financeiro aos Municípios - AFM',
+    '14': 'Cessão Onerosa – Pré-Sal', '94': 'Valores Restituíveis', '99': 'Outras Origens'
+  };
+
+  const MAP_APLICACAO = {
+    '01': 'Educação', '02': 'Saúde', '03': 'Previdência',
+    '04': 'Direitos da Criança e do Adolescente',
+    '05': 'Consórcios Intermunicipais – Contrato de Rateio',
+    '06': 'SUAS', '07': 'Recursos de Livre Movimentação', '99': 'Outras Áreas'
+  };
+
+  const MAP_DESDOBRAMENTO = {
+    '00': 'Detalhamento a Classificar', '01': 'Transferências Voluntárias Públicas',
+    '02': 'Transferências Voluntárias Privadas', '03': 'Operações de Crédito Internas',
+    '04': 'Operações de Crédito Externas', '05': 'Transferências de Programas Estaduais',
+    '06': 'Transferências de Programas Federais',
+    '07': 'Programas/Transferências Voluntárias Anteriores a 2013 Reclassificados'
+  };
+
+  const MAP_DETALHAMENTO = {
+    '00': 'Título a Classificar', '01': 'Transferências Voluntárias Estaduais',
+    '02': 'Transferências Voluntárias Federais', '03': 'Outras Transferências Voluntárias Públicas',
+    '04': 'Transf. Voluntárias de Entidades Gov. Nacionais – ECA/FMDCA',
+    '05': 'Fundo do Idoso, inclusive art. 9º IN RFB nº 1131/2011',
+    '06': 'Bloco de Financiamento da Proteção Social Básica (SUAS)',
+    '07': 'Bloco de Financiamento da Proteção Sociais Especial (SUAS)',
+    '08': 'Componente para Qualificação da Gestão (SUAS)', '09': 'Bloco de Investimentos (SUAS)',
+    '10': 'Contribuições e Legados de Entidades não Governamentais – ECA/FMDCA',
+    '11': 'Fundo do Idoso, inclusive art. 9º IN RFB nº 1131/2011 – Não Governamentais',
+    '12': 'Transferências Voluntárias Privadas Internas', '13': 'Transferências Voluntárias Privadas Externas',
+    '14': 'Operações de Crédito Internas - Mobiliárias', '15': 'Operações de Crédito Internas – Contratos',
+    '16': 'Operações de Crédito Externas - Mobiliárias', '17': 'Operações de Crédito Externas– Contratos',
+    '18': 'Transferências de Outros Programas', '19': 'Outros Programas SUAS', '20': 'Transferências do SUS',
+    '23': 'Bloco de Financiamento da Proteção Social Especial de Média Complexidade - Portaria MDS 113/2015',
+    '24': 'Bloco de Financiamento da Proteção Social Especial de Alta Complexidade - Portaria MDS 113/2015',
+    '25': 'Bloco de Financiamento da Gestão do Programa Bolsa Família e Cadastro Único',
+    '26': 'Bloco de Financiamento da Proteção Social Especial de Média e Alta Complexidade',
+    '27': 'PAS – Programa Único de Assistência - Deliberação n° 59/2023 do CEAS/PR'
+  };
+
+  const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+  // GLOBAL STATE
+  let dataPrev = null;
+  let dataCurr = null;
+  let currentActiveTab = 'rec';
+
+  // AUTO DATE DETECTION
+  const now = new Date();
+  let selectedMonthIdx = now.getMonth();
+  let currentYear = null;
+  let previousYear = null;
+
+  // SORT STATE
+  const sortState = {
+    col: 'currTotal',
+    dir: 'desc'
+  };
+
+  // HELPER FORMATTERS
+  function parseVal(valStr) {
+    if (!valStr) return 0;
+    let clean = valStr.toString().replace(/\./g, '').replace(',', '.').trim();
+    return parseFloat(clean) || 0;
+  }
+
+  function fmtCurr(val) {
+    return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function fmtPct(val) {
+    return (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
+  }
+
+  function initMonthSelect() {
+    const select = document.getElementById('select-kpi-month');
+    select.innerHTML = '';
+    MONTHS.forEach((m, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.innerText = m;
+      if (idx === selectedMonthIdx) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  function updateSelectedMonth(idxStr) {
+    selectedMonthIdx = parseInt(idxStr, 10);
+    renderKPIs();
+  }
+
+  const PROTOCOL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const MAX_ZIP_BYTES = 25 * 1024 * 1024;
+  const MAX_JSON_BYTES = 10 * 1024 * 1024;
+
+  function normalizeProtocol(value) {
+    const protocol = String(value ?? '').trim();
+    if (!PROTOCOL_UUID.test(protocol)) throw new Error('Informe um protocolo válido no parâmetro “protocolo” da URL.');
+    return protocol.toLowerCase();
+  }
+
+  function resultUrl(value) {
+    return `https://plataforma-execucoes.betha.cloud/v1/download/api/execucoes/${normalizeProtocol(value)}/resultado`;
+  }
+
+  function resourceParts(resource) {
+    const parts = String(resource || '').replace(/-/g, '.').split('.');
+    return {
+      cdOrigem: parts[2] || '99',
+      cdAplicacao: parts[3] || '99',
+      cdDesdobramento: parts[4] || '00',
+      cdDetalhamento: parts[5] || '00'
+    };
+  }
+
+  function transformRecord(record) {
+    const recurso = String(record.numeroRecurso || '').trim();
+    return {
+      receita: String(record.numeroNaturezaReceita || '').trim(),
+      descricao: String(record.descNaturezaReceita || '').trim(),
+      deducao: String(record.ehDeducao || '').trim(),
+      extra: String(record.numeroReceita || '').trim(),
+      recurso,
+      months: Array.from({ length: 12 }, (_, index) => Number(record[`valorRealizado${index + 1}`]) || 0),
+      total: Number(record.totalMeses) || 0,
+      ...resourceParts(recurso)
+    };
+  }
+
+  function transformPayload(payload) {
+    const results = Array.isArray(payload?.resultados) ? payload.resultados : [];
+    const byYear = results
+      .map(result => ({ year: Number(result.exercicio), records: Array.isArray(result.registros) ? result.registros : [] }))
+      .filter(result => Number.isInteger(result.year))
+      .sort((a, b) => a.year - b.year);
+    if (byYear.length !== 2) throw new Error('O arquivo deve conter exatamente dois exercícios para o comparativo.');
+    const convert = result => result.records.filter(record => record?.tipoNatureza === 'A').map(transformRecord);
+    return {
+      previousYear: byYear[0].year,
+      currentYear: byYear[1].year,
+      previous: convert(byYear[0]),
+      current: convert(byYear[1])
+    };
+  }
+
+  globalThis.DashboardProtocol = { normalizeProtocol, resultUrl, transformPayload };
+
+  function findEndOfCentralDirectory(view) {
+    const minimum = Math.max(0, view.byteLength - 65557);
+    for (let offset = view.byteLength - 22; offset >= minimum; offset--) {
+      if (view.getUint32(offset, true) === 0x06054b50) return offset;
+    }
+    throw new Error('O arquivo retornado não é um ZIP válido.');
+  }
+
+  async function inflateRaw(bytes) {
+    if (typeof DecompressionStream !== 'function') throw new Error('Este navegador não oferece suporte à descompactação necessária.');
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  async function readJsonFromZip(bytes) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const end = findEndOfCentralDirectory(view);
+    const entryCount = view.getUint16(end + 10, true);
+    let centralOffset = view.getUint32(end + 16, true);
+    const decoder = new TextDecoder('utf-8');
+    for (let index = 0; index < entryCount; index++) {
+      if (view.getUint32(centralOffset, true) !== 0x02014b50) break;
+      const method = view.getUint16(centralOffset + 10, true);
+      const compressedSize = view.getUint32(centralOffset + 20, true);
+      const uncompressedSize = view.getUint32(centralOffset + 24, true);
+      const nameLength = view.getUint16(centralOffset + 28, true);
+      const extraLength = view.getUint16(centralOffset + 30, true);
+      const commentLength = view.getUint16(centralOffset + 32, true);
+      const localOffset = view.getUint32(centralOffset + 42, true);
+      const name = decoder.decode(bytes.subarray(centralOffset + 46, centralOffset + 46 + nameLength));
+      if (/(^|\/)balancete-receita\.json$/i.test(name)) {
+        if (uncompressedSize > MAX_JSON_BYTES) throw new Error('O JSON do balancete ultrapassa o limite de 10 MB.');
+        if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error('A entrada JSON do ZIP está corrompida.');
+        const localNameLength = view.getUint16(localOffset + 26, true);
+        const localExtraLength = view.getUint16(localOffset + 28, true);
+        const dataOffset = localOffset + 30 + localNameLength + localExtraLength;
+        const compressed = bytes.subarray(dataOffset, dataOffset + compressedSize);
+        const jsonBytes = method === 0 ? compressed : method === 8 ? await inflateRaw(compressed) : null;
+        if (!jsonBytes) throw new Error('O ZIP usa um método de compressão não suportado.');
+        try {
+          return JSON.parse(decoder.decode(jsonBytes).replace(/^\uFEFF/, ''));
+        } catch (error) {
+          throw new Error(`O arquivo balancete-receita.json é inválido: ${error.message}`);
+        }
+      }
+      centralOffset += 46 + nameLength + extraLength + commentLength;
+    }
+    throw new Error('O ZIP não contém o arquivo balancete-receita.json.');
+  }
+
+  function protocolStatus(title, detail, state = '') {
+    const section = document.getElementById('protocol-status');
+    section.className = `protocol-section ${state}`.trim();
+    document.getElementById('protocol-title').textContent = title;
+    document.getElementById('protocol-detail').textContent = detail;
+  }
+
+  async function downloadProtocol(protocol, signal) {
+    const response = await fetch(resultUrl(protocol), { credentials: 'omit', signal });
+    let reason = '';
+    if (response.status === 202) reason = 'A execução ainda não foi concluída. Aguarde e abra o link novamente.';
+    else if (response.status === 401 || response.status === 403) reason = 'A execução exige autenticação ou você não possui permissão para acessá-la.';
+    else if (response.status === 404 || response.status === 410) reason = 'O resultado não está disponível. Confira o protocolo e a validade da execução.';
+    else if (response.status === 429) reason = 'A API recebeu muitas solicitações. Aguarde um pouco e tente novamente.';
+    else if (!response.ok) reason = `A API não disponibilizou o resultado (HTTP ${response.status}).`;
+    if (reason) throw new Error(reason);
+    const contentLength = Number(response.headers.get('Content-Length'));
+    if (contentLength > MAX_ZIP_BYTES) throw new Error('O ZIP ultrapassa o limite de 25 MB.');
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > MAX_ZIP_BYTES) throw new Error('O ZIP ultrapassa o limite de 25 MB.');
+    return new Uint8Array(buffer);
+  }
+
+  async function loadFromLocation() {
+    try {
+      const protocol = normalizeProtocol(new URLSearchParams(window.location.search).get('protocolo'));
+      protocolStatus('Carregando dados da execução…', `Protocolo ${protocol}`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      let bytes;
+      try { bytes = await downloadProtocol(protocol, controller.signal); }
+      finally { clearTimeout(timer); }
+      const payload = await readJsonFromZip(bytes);
+      const converted = transformPayload(payload);
+      previousYear = converted.previousYear;
+      currentYear = converted.currentYear;
+      dataPrev = converted.previous;
+      dataCurr = converted.current;
+      document.body.className = '';
+      const entity = payload.resultados?.[0]?.registros?.[0]?.entidadeNome || 'Entidade';
+      protocolStatus('Dados carregados com sucesso', `${entity} · ${previousYear} × ${currentYear} · ${dataPrev.length + dataCurr.length} registros analíticos`, 'loaded');
+      renderDashboard();
+    } catch (error) {
+      document.body.className = 'load-error';
+      const message = error?.name === 'AbortError' ? 'A API não respondeu em 30 segundos. Abra o link novamente para tentar outra vez.' : error.message;
+      protocolStatus('Não foi possível carregar o dashboard', message, 'error');
+    }
+  }
+
+  // AGGREGATION ENGINE
+  function aggregateData(dataSet, groupKeyFn, labelKeyFn) {
+    if (!dataSet) return {};
+    const map = {};
+
+    dataSet.forEach(row => {
+      const key = groupKeyFn(row);
+      const label = labelKeyFn(row);
+
+      if (!map[key]) {
+        map[key] = {
+          code: key,
+          label: label,
+          total: 0,
+          count: 0,
+          months: Array(12).fill(0)
+        };
+      }
+
+      map[key].total += row.total;
+      map[key].count += 1;
+      for (let m = 0; m < 12; m++) {
+        map[key].months[m] += row.months[m];
+      }
+    });
+
+    return map;
+  }
+
+  function renderKPIs() {
+    document.getElementById('kpi-year-curr').innerText = currentYear ?? '---';
+    document.getElementById('kpi-year-prev').innerText = previousYear ?? '---';
+
+    const totalCurr = dataCurr ? dataCurr.reduce((acc, r) => acc + r.total, 0) : 0;
+    const totalPrev = dataPrev ? dataPrev.reduce((acc, r) => acc + r.total, 0) : 0;
+    const varAbs = totalCurr - totalPrev;
+    const varPct = totalPrev !== 0 ? (varAbs / totalPrev) * 100 : 0;
+
+    const monthCurr = dataCurr ? dataCurr.reduce((acc, r) => acc + r.months[selectedMonthIdx], 0) : 0;
+    const monthPrev = dataPrev ? dataPrev.reduce((acc, r) => acc + r.months[selectedMonthIdx], 0) : 0;
+
+    document.getElementById('kpi-total-curr').innerText = fmtCurr(totalCurr);
+    document.getElementById('kpi-total-prev').innerText = fmtCurr(totalPrev);
+    document.getElementById('kpi-var-year').innerText = fmtPct(varPct);
+    document.getElementById('kpi-var-abs').innerText = fmtCurr(varAbs);
+    document.getElementById('kpi-month-curr').innerText = fmtCurr(monthCurr);
+    document.getElementById('kpi-month-prev').innerText = fmtCurr(monthPrev);
+  }
+
+  function renderDashboard() {
+    renderKPIs();
+    renderTabContents();
+  }
+
+  function switchTab(tabId) {
+    currentActiveTab = tabId;
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    renderTabContents();
+  }
+
+  // HANDLE SORT
+  function handleSort(colKey) {
+    if (sortState.col === colKey) {
+      sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortState.col = colKey;
+      sortState.dir = 'desc';
+    }
+    renderTabContents();
+  }
+
+  // TAB CONTENT BUILDER
+  function renderTabContents() {
+    const container = document.getElementById('tab-contents');
+    container.innerHTML = '';
+
+    const tabConfig = {
+      'rec': { keyFn: r => r.receita, labelFn: r => r.descricao, isResource: false, name: 'Por Receita e Descrição' },
+      'rec-full': { keyFn: r => r.recurso, labelFn: r => r.recurso, isResource: false, name: 'Por Recurso' },
+      'origem': { keyFn: r => r.cdOrigem, labelFn: r => MAP_ORIGEM[r.cdOrigem] || 'Outras Origens', isResource: true, name: 'Origem do Recurso' },
+      'aplicacao': { keyFn: r => r.cdAplicacao, labelFn: r => MAP_APLICACAO[r.cdAplicacao] || 'Outras Áreas', isResource: true, name: 'Aplicação Fonte' },
+      'desdobra': { keyFn: r => r.cdDesdobramento, labelFn: r => MAP_DESDOBRAMENTO[r.cdDesdobramento] || 'Não Classificado', isResource: true, name: 'Desdobramento Fonte' },
+      'detalha': { keyFn: r => r.cdDetalhamento, labelFn: r => MAP_DETALHAMENTO[r.cdDetalhamento] || 'Outros Detalhamentos', isResource: true, name: 'Detalhamento Fonte' }
+    };
+
+    const config = tabConfig[currentActiveTab];
+    if (!config) return;
+
+    const mapCurr = aggregateData(dataCurr, config.keyFn, config.labelFn);
+    const mapPrev = aggregateData(dataPrev, config.keyFn, config.labelFn);
+
+    const totalCurrGlobal = dataCurr ? dataCurr.reduce((acc, r) => acc + r.total, 0) : 0;
+
+    const yrPrev2D = String(previousYear).slice(-2);
+    const yrCurr2D = String(currentYear).slice(-2);
+
+    const allKeys = Array.from(new Set([...Object.keys(mapCurr), ...Object.keys(mapPrev)]));
+
+    let combinedList = allKeys.map(k => {
+      const c = mapCurr[k] || { code: k, label: mapPrev[k]?.label || k, total: 0, count: 0, months: Array(12).fill(0) };
+      const p = mapPrev[k] || { code: k, label: mapCurr[k]?.label || k, total: 0, count: 0, months: Array(12).fill(0) };
+      return {
+        code: k,
+        label: c.label || p.label,
+        currTotal: c.total,
+        prevTotal: p.total,
+        currCount: c.count,
+        prevCount: p.count,
+        currMonths: c.months,
+        prevMonths: p.months,
+        partCurrPct: totalCurrGlobal > 0 ? (c.total / totalCurrGlobal) * 100 : 0,
+        varAbs: c.total - p.total,
+        varPct: p.total !== 0 ? ((c.total - p.total) / p.total) * 100 : 0
+      };
+    });
+
+    // SORT LOGIC
+    combinedList.sort((a, b) => {
+      let valA = a[sortState.col];
+      let valB = b[sortState.col];
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+        return sortState.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else {
+        return sortState.dir === 'asc' ? valA - valB : valB - valA;
+      }
+    });
+
+    const tabEl = document.createElement('div');
+    tabEl.className = `tab-content active ${config.isResource ? 'resource-theme' : ''}`;
+
+    let html = '';
+    if (config.isResource) {
+      html += `<div class="legend-box">Agrupamento derivado da decomposição da máscara do código do Recurso (colunas extraídas automaticamente).</div>`;
+    }
+
+    // Controls
+    html += `
+      <div class="controls-row">
+        <input type="text" class="search-input" placeholder="Filtrar por código ou descrição..." oninput="filterTable(this.value)">
+      </div>
+    `;
+
+    // Ranking Top 8
+    const topList = [...combinedList].sort((a,b) => b.currTotal - a.currTotal);
+    const maxVal = topList[0]?.currTotal || 1;
+    html += `<div class="ranking-section"><div class="ranking-title">Top 8 - Exercício Atual</div>`;
+    topList.slice(0, 8).forEach(item => {
+      const pct = Math.max(0, (item.currTotal / maxVal) * 100);
+      html += `
+        <div class="bar-row">
+          <div class="bar-label" title="${item.code} - ${item.label}"><strong>${item.code}</strong> - ${item.label}</div>
+          <div class="bar-track"><div class="bar-fill" style="width: ${pct}%"></div></div>
+          <div class="bar-val">${fmtCurr(item.currTotal)}</div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    // Helper for sort icon
+    const getSortIcon = (colKey) => {
+      if (sortState.col !== colKey) return '<span class="sort-icon">⇅</span>';
+      return sortState.dir === 'asc' ? '<span class="sort-icon">▲</span>' : '<span class="sort-icon">▼</span>';
+    };
+
+    // Table Header
+    html += `
+      <div class="table-container">
+        <table id="main-table">
+          <thead>
+            <tr>
+              <th onclick="handleSort('code')" class="${sortState.col === 'code' ? 'sorted' : ''}">Código ${getSortIcon('code')}</th>
+              <th onclick="handleSort('label')" class="${sortState.col === 'label' ? 'sorted' : ''}">Descrição / Agrupamento ${getSortIcon('label')}</th>
+              <th onclick="handleSort('prevTotal')" class="num-col ${sortState.col === 'prevTotal' ? 'sorted' : ''}">Ex. Anterior ${getSortIcon('prevTotal')}</th>
+              <th onclick="handleSort('currTotal')" class="num-col ${sortState.col === 'currTotal' ? 'sorted' : ''}">Ex. Atual ${getSortIcon('currTotal')}</th>
+              <th onclick="handleSort('varAbs')" class="num-col ${sortState.col === 'varAbs' ? 'sorted' : ''}">Variação (R$) ${getSortIcon('varAbs')}</th>
+              <th onclick="handleSort('varPct')" class="num-col ${sortState.col === 'varPct' ? 'sorted' : ''}">Variação (%) ${getSortIcon('varPct')}</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    combinedList.forEach((item, idx) => {
+      html += `
+        <tr class="main-row" onclick="toggleDetails(${idx})">
+          <td><strong>${item.code}</strong></td>
+          <td><div class="text-clamp" title="${item.label}">${item.label}</div></td>
+          <td class="num-col">${fmtCurr(item.prevTotal)}</td>
+          <td class="num-col">${fmtCurr(item.currTotal)}</td>
+          <td class="num-col ${item.varAbs < 0 ? 'neg-value' : ''}">${fmtCurr(item.varAbs)}</td>
+          <td class="num-col ${item.varPct < 0 ? 'neg-value' : ''}">${fmtPct(item.varPct)}</td>
+        </tr>
+        <tr class="details-row" id="detail-${idx}">
+          <td colspan="6">
+            <div class="details-container">
+              
+              <!-- HEADER DE RESUMO -->
+              <div class="details-header">
+                <div class="details-title">${item.code} - ${item.label}</div>
+                <div class="details-sub">Lançamentos: ${previousYear} (${item.prevCount}) · ${currentYear} (${item.currCount}) · Participação ${currentYear}: ${item.partCurrPct.toFixed(2)}%</div>
+              </div>
+
+              <!-- CARDS MÊS A MÊS -->
+              <div class="cards-month-grid">
+      `;
+
+      for (let m = 0; m < 12; m++) {
+        const cVal = item.currMonths[m];
+        const pVal = item.prevMonths[m];
+        
+        let mVarPct = 0;
+        if (pVal !== 0) {
+          mVarPct = ((cVal - pVal) / Math.abs(pVal)) * 100;
+        } else if (cVal > 0) {
+          mVarPct = 100;
+        }
+
+        const maxM = Math.max(Math.abs(cVal), Math.abs(pVal)) || 1;
+        const cHeight = Math.max(4, (Math.abs(cVal) / maxM) * 100);
+        const pHeight = Math.max(4, (Math.abs(pVal) / maxM) * 100);
+
+        html += `
+          <div class="month-card">
+            <div class="m-title">${MONTHS[m]}</div>
+            <div class="m-line"><span class="yr">${yrPrev2D}</span> R$ ${pVal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div class="m-line"><span class="yr">${yrCurr2D}</span> R$ ${cVal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div class="m-var ${mVarPct < 0 ? 'neg-value' : (mVarPct > 0 ? 'pos-value' : '')}">${fmtPct(mVarPct)}</div>
+            
+            <div class="m-bars-wrapper">
+              <div class="m-bar-inner prev" style="height: ${pHeight}%" title="${MONTHS[m]} ${previousYear}: ${fmtCurr(pVal)}"></div>
+              <div class="m-bar-inner curr" style="height: ${cHeight}%" title="${MONTHS[m]} ${currentYear}: ${fmtCurr(cVal)}"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table></div>`;
+    tabEl.innerHTML = html;
+    container.appendChild(tabEl);
+  }
+
+  function toggleDetails(idx) {
+    const row = document.getElementById(`detail-${idx}`);
+    if (row) {
+      row.classList.toggle('active');
+    }
+  }
+
+  function filterTable(term) {
+    const cleanTerm = term.toLowerCase();
+    const rows = document.querySelectorAll('#main-table tbody tr.main-row');
+    rows.forEach((row, idx) => {
+      const text = row.innerText.toLowerCase();
+      const detailRow = document.getElementById(`detail-${idx}`);
+      if (text.includes(cleanTerm)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+        if (detailRow) detailRow.classList.remove('active');
+      }
+    });
+  }
+
+  // Initial setup
+  initMonthSelect();
+  loadFromLocation();
+</script>
+</body>
+</html>
